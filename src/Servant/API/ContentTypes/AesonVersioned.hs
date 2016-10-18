@@ -14,6 +14,8 @@ import Servant.API.ContentTypes
 
 import Control.Applicative
 
+import Control.Error
+
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 
@@ -107,6 +109,13 @@ instance (SerializedVersion a, FunctorToJSON f
 parseVersion :: BS.ByteString -> Maybe (Version Integer Integer)
 parseVersion v = readMaybe (BS.unpack v)
 
+instance {-# OVERLAPPING #-} (AllCTUnrender list String) => AllCTUnrender (JSONVersioned ': list) String where
+  handleCTypeH _ ch reqBody =
+    (getCompose . fmap runIdentity . Compose $ handleCTypeH (Proxy :: Proxy '[JSONVersioned]) ch reqBody)
+    <|>
+    handleCTypeH (Proxy :: Proxy list) ch reqBody
+
+
 instance (DeserializedVersion a
          ,AllCTUnrender list a) => AllCTUnrender (JSONVersioned ': list) a where
   handleCTypeH _ ch reqBody =
@@ -124,8 +133,8 @@ instance {-# OVERLAPPING #-} (TraversableFromJSON t, DeserializedVersion a
     let mVersionBS = original <$> media /. "version"
     version <- maybe (pure defaultVersion) parseVersion mVersionBS
     deserializer <- M.lookup version deserializers'
-    return $ case decode reqBody >>= deserialize deserializer  of
-       Just v -> Right v
-       Nothing -> Left "Error parsing JSON")
+    return $ do
+      value <- eitherDecodeLenient reqBody
+      note "Valid JSON but didn't match version" $ deserialize deserializer value)
     <|>
     handleCTypeH (Proxy :: Proxy list) contentTypeHeader reqBody
