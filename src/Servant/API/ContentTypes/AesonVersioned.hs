@@ -23,6 +23,7 @@ import Data.Aeson
 import Data.Aeson.Versions
 
 import Data.Functor.Identity
+import Data.Functor.Compose
 
 import Data.Maybe
 import Data.Monoid
@@ -57,6 +58,16 @@ getAcceptMedia acceptHeader defaultMedia = case sequence $ parseAccept <$> BS.sp
   Just medias -> case getFirst . mconcat $ First . refineAccept defaultMedia <$> medias of
     Just media -> Just media
     Nothing -> Nothing
+
+
+getContentType :: BS.ByteString -> MediaType -> Maybe MediaType
+getContentType contentTypeHeader defaultMedia = case parseAccept contentTypeHeader of
+  Nothing -> Nothing
+  Just media -> if media `matches` ("application" // "json")
+                then Just $ if media /? "version"
+                            then media
+                            else defaultMedia
+                else Nothing
 
 
 instance {-# OVERLAPPING #-} AllMime list => AllMime (JSONVersioned ': list) where
@@ -95,3 +106,26 @@ instance (SerializedVersion a, FunctorToJSON f
 
 parseVersion :: BS.ByteString -> Maybe (Version Integer Integer)
 parseVersion v = readMaybe (BS.unpack v)
+
+instance (DeserializedVersion a
+         ,AllCTUnrender list a) => AllCTUnrender (JSONVersioned ': list) a where
+  handleCTypeH _ ch reqBody =
+    (getCompose . fmap runIdentity . Compose $ handleCTypeH (Proxy :: Proxy '[JSONVersioned]) ch reqBody)
+    <|>
+    handleCTypeH (Proxy :: Proxy list) ch reqBody
+
+instance {-# OVERLAPPING #-} (TraversableFromJSON t, DeserializedVersion a
+         ,AllCTUnrender list (t a)) => AllCTUnrender (JSONVersioned ': list) (t a) where
+  handleCTypeH _ contentTypeHeader reqBody = (do
+    let deserializers' = deserializers
+        defaultVersion = fst $ M.findMax deserializers'
+    media <- getContentType (LBS.toStrict contentTypeHeader) $
+      "application" // "json" /: ("version", BS.pack $ show defaultVersion)
+    let mVersionBS = original <$> media /. "version"
+    version <- maybe (pure defaultVersion) parseVersion mVersionBS
+    deserializer <- M.lookup version deserializers'
+    return $ case decode reqBody >>= deserialize deserializer  of
+       Just v -> Right v
+       Nothing -> Left "Error parsing JSON")
+    <|>
+    handleCTypeH (Proxy :: Proxy list) contentTypeHeader reqBody
