@@ -6,6 +6,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Servant.API.ContentTypes.AesonVersioned where
 
@@ -65,6 +66,12 @@ instance {-# OVERLAPPING #-} AllMime list => AllMime (JSONVersioned ': list) whe
 instance AllCTRender '[] a where
   handleAcceptH _ _ _ = Nothing
 
+
+instance {-# OVERLAPPING #-} (AllCTRender list String) => AllCTRender (JSONVersioned ': list) String where
+  handleAcceptH p ah@(AcceptHeader acceptHeader) a =
+    handleAcceptH (Proxy :: Proxy '[JSONVersioned]) ah (Identity a)
+    <|>
+    handleAcceptH (Proxy :: Proxy list) ah a
 
 instance {-# OVERLAPPABLE #-} (SerializedVersion a, AllCTRender list a) => AllCTRender (JSONVersioned ': list) a where
   handleAcceptH p ah@(AcceptHeader acceptHeader) a =
