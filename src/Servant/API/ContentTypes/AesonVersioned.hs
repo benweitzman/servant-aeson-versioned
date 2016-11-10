@@ -7,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Servant.API.ContentTypes.AesonVersioned where
 
@@ -31,17 +32,54 @@ import Data.Maybe
 import Data.Monoid
 
 import Data.Proxy
+import Data.Tagged
+
+import GHC.TypeLits
 
 import Text.Read
 
 import qualified Data.Map as M
 
-import Network.HTTP.Media
+import Network.HTTP.Media hiding (Accept)
+
+data JSONVersioned (v :: Version Nat Nat)
+
+instance KnownVersion v => Accept (JSONVersioned v) where
+    contentType _ =  "application" // "json" /: ("version", BS.pack . show $ versionVal (Proxy :: Proxy v))
+
+instance {-# OVERLAPPABLE #-}
+    (FailableToJSON (Tagged v a), KnownVersion v) => MimeRender (JSONVersioned v) a where
+    mimeRenderMaybe _ val = encode <$> mToJSON (Tagged val :: Tagged v a)
+
+instance {-# OVERLAPPING #-}
+    (FailableToJSON (Tagged v a), KnownVersion v, CatMaybes f, FunctorToJSON f)
+    => MimeRender (JSONVersioned v) (f a) where
+    mimeRenderMaybe _ val = encode <$> runSerializer serializer val
+
+        where  serializer :: Serializer a
+               serializer = snd $ getSerializer (Proxy :: Proxy v)
 
 
-data JSONVersioned
+{-
+instance {-# OVERLAPPING #-} (KnownVersion v, AllMimeRender cs a, FailableToJSON (Tagged v a)) => AllMimeRender ((JSONVersioned v) ': cs) a where
+    allMimeRender _ val = case mToJSON (Tagged val :: Tagged v a) of
+      Just json -> (contentType (Proxy :: Proxy (JSONVersioned v)), encode json) : (allMimeRender (Proxy :: Proxy cs) val)
+      Nothing -> allMimeRender (Proxy :: Proxy cs) val
+-}
 
+{-
+instance {-# OVERLAPPING #-} (KnownVersion v, AllMimeRender cs (f a), FailableToJSON (Tagged v a)
+         ,CatMaybes f, FunctorToJSON f)
+    => AllMimeRender ((JSONVersioned v) ': cs) (f a) where
+    allMimeRender _ val = case runSerializer serializer val of
+      Just json -> (contentType (Proxy :: Proxy (JSONVersioned v)), encode json) : allMimeRender (Proxy :: Proxy cs) val
+      Nothing -> allMimeRender (Proxy :: Proxy cs) val
 
+      where  serializer :: Serializer a
+             serializer = snd $ getSerializer (Proxy :: Proxy v)
+-}
+
+{-
 noParams :: MediaType -> MediaType
 noParams media = original (mainType media) // original (subType media)
 
@@ -138,3 +176,4 @@ instance {-# OVERLAPPING #-} (TraversableFromJSON t, DeserializedVersion a
       note "Valid JSON but didn't match version" $ deserialize deserializer value)
     <|>
     handleCTypeH (Proxy :: Proxy list) contentTypeHeader reqBody
+-}

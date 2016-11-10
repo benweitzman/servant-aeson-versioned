@@ -40,12 +40,21 @@ packages:
 - '.'
 - location:
     git: https://github.com/vfiles/aeson-versioned
-    commit: e048abddfa1295c6058e55906bd83898fe26a073
+    commit: 3656e48a73367128fd85bbdcf3f030de392dc85f
   extra-dep: true
+- location:
+    git: https://github.com/vfiles/servant
+    commit: b5ae9c04fca62eaaefd6a6951fc743ea0fb01dae
+  extra-dep: true
+  subdirs:
+    - servant
+    - servant-server
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - aeson-0.11.0.0
+- http-api-data-0.3.2
 
 # Override default flag values for local packages and extra-deps
 flags: {}
