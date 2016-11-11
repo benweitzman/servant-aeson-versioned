@@ -39,9 +39,11 @@ type family Append xs ys where
     Append (x ': xs) ys = x ': Append xs ys
 
 
-type family GetV rest a where
-    GetV rest (f a) = Get (Append (Map JSONVersioned (SerializerVersions a)) rest) (f a)
-    GetV rest a = Get (Append (Map JSONVersioned (SerializerVersions a)) rest) a
+type family Versioned verb rest a where
+  Versioned ReqBody rest (f a) = ReqBody (Append (Map JSONVersioned (DeserializerVersions a)) rest) (f a)
+  Versioned ReqBody rest a = ReqBody (Append (Map JSONVersioned (DeserializerVersions a)) rest) a
+  Versioned verb rest (f a) = verb (Append (Map JSONVersioned (SerializerVersions a)) rest) (f a)
+  Versioned verb rest a = verb (Append (Map JSONVersioned (SerializerVersions a)) rest) a
 
 type family ReqBodyV rest a where
     ReqBodyV rest (f a) = ReqBody (Append (Map JSONVersioned (DeserializerVersions a)) rest) (f a)

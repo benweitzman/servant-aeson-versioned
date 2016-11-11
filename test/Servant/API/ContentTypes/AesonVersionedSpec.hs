@@ -34,10 +34,10 @@ import Test.Hspec.Wai
 import Servant.API.ContentTypes.AesonVersioned
 
 type JSONVersionApi =
-         "foo" :> GetV '[] Person
-    :<|> "foos" :> GetV '[] [Person]
-    :<|> "bar" :> ReqBodyV '[] Person :> GetV '[] Person
-    :<|> "bars" :> ReqBodyV '[] [Person] :> GetV '[] [Person]
+         "foo" :> Versioned Get '[] Person
+    :<|> "foos" :> Versioned Get '[] [Person]
+    :<|> "bar" :> Versioned ReqBody '[] Person :> Versioned Get '[] Person
+    :<|> "bars" :> Versioned ReqBody '[] [Person] :> Versioned Get '[] [Person]
 
 jsonVersionApi :: Proxy JSONVersionApi
 jsonVersionApi = Proxy
