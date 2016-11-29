@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-7.4
+resolver: nightly-2016-03-29
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,7 +40,11 @@ packages:
 - '.'
 - location:
     git: https://github.com/vfiles/aeson-versioned
-    commit: 3656e48a73367128fd85bbdcf3f030de392dc85f
+    commit: 808d6b65ebcfaaeb6f17e059e8ed364acbfcf130
+  extra-dep: true
+- location:
+    git: https://github.com/vfiles/aeson-versioned-sideloading
+    commit: 04de8a68a3964ed1e2522be9b53165cd02287a2f
   extra-dep: true
 - location:
     git: https://github.com/vfiles/servant

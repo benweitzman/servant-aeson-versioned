@@ -20,6 +20,7 @@ library
                      , servant
                      , aeson
                      , aeson-versioned
+                     , aeson-versioned-sideloading
                      , http-media
                      , bytestring
                      , containers
@@ -38,6 +39,7 @@ test-suite hspec
                      , hspec-wai
                      , servant
                      , aeson-versioned
+                     , aeson-versioned-sideloading
                      , aeson
                      , servant-server
                      , tagged
