@@ -54,8 +54,13 @@ data JSONVersioned (v :: Version Nat Nat)
 instance KnownVersion v => Accept (JSONVersioned v) where
     contentType _ =  "application" // "json" /: ("version", BS.pack . show $ versionVal (Proxy :: Proxy v))
 
-instance {-# OVERLAPPABLE #-}
-    (FailableToJSON (Tagged v a), KnownVersion v) => MimeRender (JSONVersioned v) a where
+newtype UsingSingle a = UsingSingle a
+
+instance {-# OVERLAPPING #-}
+  (FailableToJSON (Tagged v a), KnownVersion v) => MimeRender (JSONVersioned v) (UsingSingle a) where
+  mimeRenderMaybe _ (UsingSingle val) = encode <$> mToJSON (Tagged val :: Tagged v a)
+
+instance (FailableToJSON (Tagged v a), KnownVersion v) => MimeRender (JSONVersioned v) a where
     mimeRenderMaybe _ val = encode <$> mToJSON (Tagged val :: Tagged v a)
 
 instance {-# OVERLAPPING #-}
